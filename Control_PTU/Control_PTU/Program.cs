@@ -171,12 +171,12 @@ namespace Control_PTU
                     {
                         for (X_loop = XMIN; X_loop <= XMAX; X_loop = X_loop + DEL_X)  //x方向（横方向）のループ[行きがけ：-から+]/////////////
                         {
-                            Xm = X_loop / 100.0;  //計算用に[m]に直す
+                            Xm = X_loop / 100.0;  //計算用にxy座標を[m]に直す
                             Ym = Y_loop / 100.0;
                             deg_pan = CalPan(Xm, Ym, length_pan);                           //ファイ(degree)の取得
                             deg_tilt = CalTilt(Xm, Ym, Height, length_tilt, length_pan);    //シータ(degree)の取得
-                            pos_pan = -deg_pan / degpos;        //Pan-potitionへの変換:[-かける]
-                            pos_tilt = -deg_tilt / degpos;      //Tilt-positionへの変換:[-かける]
+                            pos_pan = -deg_pan / degpos;        //Pan-potitionへの変換 :[[-かける]]
+                            pos_tilt = -deg_tilt / degpos;      //Tilt-positionへの変換:[[-かける]]
                             pos_pan = Math.Round(pos_pan);      //数値の丸め（四捨五入）
                             pos_tilt = Math.Round(pos_tilt);
                             panList.Add(pos_pan.ToString());    //CSV書き込み:pos_pan
@@ -214,7 +214,7 @@ namespace Control_PTU
                             port.Write("A ");                       //コマンド実行
                             mre.Reset();                            //一回停止させる
                             mre.WaitOne();
-                            port.Write("MS ");                      //移動完了フラグ（MS : Monitor status）
+                            port.Write("MS ");                      //時間取得用フラグ（MS : Monitor status）
                             Thread.Sleep(10);                       //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
                             //Thread.Sleep(1000);                   //***停止時間(1sec)***
                             //
@@ -223,7 +223,7 @@ namespace Control_PTU
 
                         if (Y_loop + DEL_Y <= YMAX)  //帰りがけできるかの確認
                         {
-                            Y_loop = Y_loop + DEL_Y;            //y方向に+1
+                            Y_loop = Y_loop + DEL_Y;            //y方向に+計測幅
                             for (X_loop = XMAX; X_loop >= XMIN; X_loop = X_loop - DEL_X)  //x方向（横方向）のループ[帰りがけ：+から-]/////
                             {
                                 Xm = X_loop / 100.0;  //計算用に[m]に直す
@@ -293,6 +293,7 @@ namespace Control_PTU
                     EndprocessFlag = true;  //実行終了フラグtrue
 
                     //CSV書き込み用にリストをまとめる
+                    Console.WriteLine("CSV出力中…");
                     var CSVdata = new List<List<string>>()
                     {
                         timestampList,
@@ -305,6 +306,7 @@ namespace Control_PTU
                     {
                         writer.Write(CSVdata);
                     }
+                    Console.WriteLine("Finish！");
 
                     //END実行部（メインの流れ）********************************************************************
                 },
