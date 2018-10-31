@@ -11,12 +11,12 @@ namespace Mapping_Data
     {
         //各種初期設定*************************************************************************************************
         //////CSVデータ読み込み//@"読み込みファイルパス，ファイル名.csv"///////////////////////////
-        private static string PTU_data_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\PTUSample.csv";
-        private static string LMm_data_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\LMmSample3.csv";
+        private static string PTU_data_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\PTU_1026_1142.csv";
+        private static string LMm_data_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\LMm_1026_1142.csv";
         //////同期時間の設定///////////////////////////////////////////////////////////////////////
-        private static TimeSpan offset = new TimeSpan(1, 0, 12, 0, 0);     //TimeSpan(日，時間，分，秒，ミリ秒)    //PTUとAndroidの時間ずれ***
-        private static TimeSpan interval_PTU = new TimeSpan(0, 0, 0, 0, 500);  //PTUの時間の正規化間隔***
-        private static TimeSpan interval_LMm = new TimeSpan(0, 0, 0, 0, 500);  //LMmの時間の正規化間隔***
+        private static TimeSpan offset = new TimeSpan(0, 0, 0, 1, 612);     //TimeSpan(日，時間，分，秒，ミリ秒)    //PTUとAndroidの時間ずれ***
+        private static TimeSpan interval_PTU = new TimeSpan(0, 0, 0, 0, 100);  //PTUの時間の正規化間隔***
+        private static TimeSpan interval_LMm = new TimeSpan(0, 0, 0, 0, 100);  //LMmの時間の正規化間隔***
         ///////ロボットプラットフォームの寸法設定[m]///////////////////////////////////////////////
         private static double Height = 0.5;                             //PTUの高さ[m]
         private static double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
@@ -32,7 +32,7 @@ namespace Mapping_Data
         private static double zmax = Height + length_tilt;
         //ボクセル設定用////////////////////////////////////////////////////////////////////////////
         private static int Xrange = (int)(xmax / delta) - (int)(xmin / delta);            //x方向のセルの数
-        private static int Yrange = (int)(ymax / delta);                                          //y方向のセルの数　※yminは考慮しない（LMm-Gの始点はy=0にあるため）
+        private static int Yrange = (int)(ymax / delta);                                  //y方向のセルの数　※yminは考慮しない（LMm-Gの始点はy=0にあるため）
         private static int Zrange = (int)(RoundUp(Height + length_tilt, delta) / delta);  //z方向のセルの数（PTUの高さを分解能で切り上げたもの）
         private static int cell_size = Xrange * Yrange * Zrange;                          //すべてのセルの数
         ///////計測点の総数////////////////////////////////////////////////////////////////////////
@@ -97,7 +97,7 @@ namespace Mapping_Data
             List<int> pos_tilt = str_pos_tilt.ConvertAll(x => int.Parse(x));         //Tilt角
 
             //***PTUとAndroidの時間ずれ(オフセット)の修正***
-            PTUtimestamp = PTUtimestamp.ConvertAll(x => x - offset);
+            PTUtimestamp = PTUtimestamp.ConvertAll(x => x + offset);
 
             //時間の正規化（数値の丸め, 切り上げ）
             PTUtimestamp = PTUtimestamp.ConvertAll(x => Time_RoundUp(x, interval_PTU));
@@ -215,11 +215,11 @@ namespace Mapping_Data
 
             //分割光路の計算******************************************************************************************
             //ボクセルナンバーをふる
-            create_BOXCELL_num();
+            create_VOXEL_num();
 
             //hoge
-            //double hoge = get_BOXCELL_num(-1,0.9,0.039);
-            //Console.WriteLine("hoge:"+hoge);
+            //double hoge = get_VOXEL_num(-1,0.9,0.039);
+            //Console.WriteLine("measure_num:"+measure_num+" Length_List"+Length_List);
             //CalOP(526,-499,1);
 
             //計算部
@@ -228,14 +228,14 @@ namespace Mapping_Data
                 CalOP(PTU_Pan[i], PTU_Tilt[i], i);
             }
 
-            //表示確認
-            for(i=0;i< measure_num; i++)
-            {
-                for (j = 1; j < cell_size + 1; j++)
-                {
-                    Console.WriteLine("measure_num:"+i+" cell_num:"+j+" OP:"+split_OP[i, j]);
-                }
-            }
+            //最終配列の表示確認
+            //for (i = 0; i < measure_num; i++)
+            //{
+            //    for (j = 1; j < cell_size + 1; j++)
+            //    {
+            //        Console.WriteLine("measure_num:" + i + " cell_num:" + j + " OP:" + split_OP[i, j]);
+            //    }
+            //}
             //END分割光路の計算***************************************************************************************
         }
 
@@ -333,7 +333,7 @@ namespace Mapping_Data
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt(x_grid * x_grid + y_grid * y_grid + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_BOXCELL_num(x_grid, y_grid, z_grid);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid);
                     //Console.WriteLine("*num" + intersection_grid[split_num].num);
                     split_num++;
                 }
@@ -355,7 +355,7 @@ namespace Mapping_Data
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt(x_grid * x_grid + y_grid * y_grid + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_BOXCELL_num(x_grid, y_grid, z_grid);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid);
                     //Console.WriteLine("*num" + intersection_grid[split_num].num);
                     split_num++;
                 }
@@ -364,8 +364,8 @@ namespace Mapping_Data
                 {
                     //Console.Write("z_loop ");
                     z_grid = z_loop * delta;     //グリッドに変換
-                    y_grid = (zmax - z_grid) * Math.Tan(rad_tilt);
-                    x_grid = y_grid / Math.Tan(rad_pan);
+                    y_grid = (zmax - z_grid) * Math.Tan(rad_tilt) * Math.Sin(rad_pan);
+                    x_grid = (zmax - z_grid) * Math.Tan(rad_tilt) * Math.Cos(rad_pan);
                     //Console.WriteLine("x:" + x_grid + " y:" + y_grid + " z:" + z_grid);
 
                     if (x_grid > xmax || y_grid > ymax)
@@ -378,7 +378,7 @@ namespace Mapping_Data
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt(x_grid * x_grid + y_grid * y_grid + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_BOXCELL_num(x_grid, y_grid, z_grid);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid);
                     //Console.WriteLine("*num" + intersection_grid[split_num].num);
                     split_num++;
                 }
@@ -395,7 +395,7 @@ namespace Mapping_Data
                 for (; x_loop <= -(int)(xmin / delta); x_loop++)  // x_loop = 1 は delta/delta のこと(ループ用に整数に直しているだけ)
                 {
                     //Console.Write("x_loop ");
-                    x_grid = x_loop * delta;    //グリッド座標に変換
+                    x_grid = x_loop * delta;    //グリッド座標に変換    
                     y_grid = x_grid * Math.Tan(rad_pan);
                     z_grid = zmax - Math.Sqrt(x_grid * x_grid + y_grid * y_grid) / Math.Tan(rad_tilt);
                     //Console.WriteLine("x:" + x_grid + " y:" + y_grid + " z:" + z_grid);
@@ -405,11 +405,11 @@ namespace Mapping_Data
                         break;
                     }
                     //データ登録
-                    intersection_grid[split_num].x = x_grid;
+                    intersection_grid[split_num].x = -x_grid;   //xは絶対値だったので負にする
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt(x_grid * x_grid + y_grid * y_grid + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_BOXCELL_num(x_grid, y_grid, z_grid);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid);
                     //Console.WriteLine("*num" + intersection_grid[split_num].num);
                     split_num++;
                 }
@@ -418,7 +418,7 @@ namespace Mapping_Data
                 {
                     //Console.Write("y_loop ");
                     y_grid = y_loop * delta;    //グリッドに変換
-                    x_grid = - y_grid / Math.Tan(rad_pan);
+                    x_grid = - y_grid / Math.Tan(rad_pan);      //xを負にする
                     z_grid = zmax - Math.Sqrt(x_grid * x_grid + y_grid * y_grid) / Math.Tan(rad_tilt);
                     //Console.WriteLine("x:" + x_grid + " y:" + y_grid + " z:" + z_grid);
                     if (x_grid < xmin || z_grid < 0)
@@ -431,7 +431,7 @@ namespace Mapping_Data
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt(x_grid * x_grid + y_grid * y_grid + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_BOXCELL_num(x_grid, y_grid, z_grid);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid);
                     //Console.WriteLine("*num" + intersection_grid[split_num].num);
                     split_num++;
                 }
@@ -440,8 +440,8 @@ namespace Mapping_Data
                 {
                     //Console.Write("z_loop ");
                     z_grid = z_loop * delta;     //グリッドに変換
-                    y_grid = (zmax - z_grid) * Math.Tan(rad_tilt);
-                    x_grid = - y_grid / Math.Tan(rad_pan);
+                    y_grid = (zmax - z_grid) * Math.Tan(rad_tilt) * Math.Sin(rad_pan);
+                    x_grid = -(zmax - z_grid) * Math.Tan(rad_tilt) * Math.Cos(rad_pan);     //xを負にする
                     //Console.WriteLine("x:" + x_grid + " y:" + y_grid + " z:" + z_grid);
 
                     if (x_grid < xmin || y_grid > ymax)
@@ -454,7 +454,7 @@ namespace Mapping_Data
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt(x_grid * x_grid + y_grid * y_grid + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_BOXCELL_num(x_grid, y_grid, z_grid);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid);
                     //Console.WriteLine("*num" + intersection_grid[split_num].num);
                     split_num++;
                 }
@@ -491,10 +491,10 @@ namespace Mapping_Data
                 }
             }
             //opの計算確認
-            //for (i = 0; i < temp_len; i++)
-            //{
-            //    Console.WriteLine("num:" + i + " x" + intersection_grid[i].x + " y:" + intersection_grid[i].y + " z:" + intersection_grid[i].z + " len:" + intersection_grid[i].len + " num:" + intersection_grid[i].num+" op:"+intersection_grid[i].op);
-            //}
+            for (i = 0; i < temp_len; i++)
+            {
+                Console.WriteLine("num:" + i + " x" + intersection_grid[i].x + " y:" + intersection_grid[i].y + " z:" + intersection_grid[i].z + " len:" + intersection_grid[i].len + " num:" + intersection_grid[i].num + " op:" + intersection_grid[i].op);
+            }
             //値を最終配列に入れる//////////////////////////////////////////////////////////////////
             for (i = 0; i < temp_len; i++)
             {
@@ -517,21 +517,21 @@ namespace Mapping_Data
 
         //ボクセルナンバー取得関係************************************************************************************
         //交点のグリッド座標からボクセルナンバーを取得する関数***
-        private static int get_BOXCELL_num(double x, double y, double z)
+        private static int get_VOXEL_num(double x, double y, double z)
         {
             int num;
-            int boxcell_x = (int)(RoundUp(x, delta) / delta);   //RoundDown(x, delta):分解能まで正規化，/deltaでボクセル座標に変換
-            int boxcell_y = (int)(RoundUp(y, delta) / delta);
-            int boxcell_z = (int)(RoundDown(z, delta) / delta) + 1;
-            num = trans_Boxcell_num(boxcell_x, boxcell_y, boxcell_z);
+            int voxel_x = (int)(RoundUp(x, delta) / delta);   //RoundDown(x, delta):分解能まで正規化，/deltaでボクセル座標に変換
+            int voxel_y = (int)(RoundUp(y, delta) / delta);
+            int voxel_z = (int)(RoundDown(z, delta) / delta) + 1;
+            num = trans_Voxel_num(voxel_x, voxel_y, voxel_z);
 
             return num;
         }
 
         //ボクセルナンバーを格納する配列
-        private static int[,,] boxcell_num = new int[Xrange+2, Yrange+2, Zrange+2];
+        private static int[,,] voxel_num = new int[Xrange+2, Yrange+2, Zrange+2];
         //ボクセルナンバーをふる関数
-        private static void create_BOXCELL_num()
+        private static void create_VOXEL_num()
         {
             int num = 1;
             int i, j, k;
@@ -542,14 +542,14 @@ namespace Mapping_Data
                 {
                     for(i = 0; i < Xrange; i++)
                     {
-                        boxcell_num[i, j, k] = num;
+                        voxel_num[i, j, k] = num;
                         num++;
                     }
                 }
             }
         }
-        //ボクセル座標からボクセルナンバーを取得する関数//get_Boxcell_num[ボクセル座標（x,y,z）]
-        private static int trans_Boxcell_num(int x, int y, int z)
+        //ボクセル座標からボクセルナンバーを取得する関数//get_Voxel_num[ボクセル座標（x,y,z）]
+        private static int trans_Voxel_num(int x, int y, int z)
         {
             if (x < 0)
             {
@@ -563,7 +563,7 @@ namespace Mapping_Data
                 y = y - 1;
                 z = z - 1;
             }
-            return boxcell_num[x, y, z];
+            return voxel_num[x, y, z];
         }
         //ENDボクセルナンバー取得関係*********************************************************************************
 
