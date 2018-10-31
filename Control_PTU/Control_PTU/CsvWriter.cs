@@ -31,7 +31,8 @@ public class CsvWriter : IDisposable
     /// <param name="encoding">使用する文字エンコーディング。</param>
     public CsvWriter(string path, Encoding encoding)
     {
-        var stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+        //var stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);     //完全な上書きモード
+        var stream = new FileStream(path, FileMode.Append, FileAccess.Write);           //追記モード（履歴残る）
         this.stream = new StreamWriter(stream, encoding);
     }
 

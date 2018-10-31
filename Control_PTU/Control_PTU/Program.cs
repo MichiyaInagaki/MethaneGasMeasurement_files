@@ -51,7 +51,7 @@ namespace Control_PTU
                 {               
                     DateTime dt = DateTime.Now;                         //現在の時刻の取得
                     string DT = dt.ToString("yyyy/MM/dd/HH:mm:ss.fff"); //string型に変換（ミリ秒まで取得）
-                    Console.WriteLine("\t■Time stamp: "+ DT);          //タイムスタンプ***
+                    Console.WriteLine("\tTime stamp: "+ DT);          //タイムスタンプ***
                     timestampList.Add(DT);                              //リストに追加
                 }
             }
@@ -72,10 +72,14 @@ namespace Control_PTU
                 //実行部へ
                 if (key.KeyChar == 's')
                 {
-                    DateTime dt = DateTime.Now;
-                    string DT = dt.ToString("yyyy/MM/dd/HH:mm:ss.fff");      //string型に変換（ミリ秒まで取得）
-                    Console.WriteLine("■実行開始時刻: " + DT + "\n");      //タイムスタンプ 
-                    Exercute(port);                                          //実行部へ
+                    ////////////////////////Exercute関数の仕様//////////////////////////////////////////
+                    //Exercute(port, xmin, xmax, ymin, ymax, delta, output_path)                      //
+                    //xmin, xmax, ymin, ymax: 測定の範囲（パンチルトの左右方向がx，前後方向がy）[m]   //
+                    //delta: 測定の刻み幅[m]（!!測定範囲を割り切れるものにすること!!）                //
+                    //output_path: @"出力先のパス\ファイル名.csv"                                     //
+                    ////////////////////////////////////////////////////////////////////////////////////
+                    //Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.5);                                 //実行部へ
+                    Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge.csv");
                 }
             }
             //ENDコマンド選択部*********************************************************************************
@@ -97,29 +101,27 @@ namespace Control_PTU
 
 
         //実行部************************************************************************************************
-        private static void Exercute(SerialPort port)
+        private static void Exercute(SerialPort port, double xmin, double xmax, double ymin, double ymax, double delta, string output_path)
         {
             //初期設定（計測範囲，最大角，変数設定）************************************************************
             int count = 1;                          //測定点の数カウント用
             ///////測定の範囲（パンチルトの左右方向がx，前後方向がy）[m]/////////////
-            double xmax, xmin, ymax, ymin;         
-            xmin = -1.0;
-            xmax = 1.0;
-            ymin = 2.0;
-            ymax = 4.0;
-            ///////測定の刻み幅[m]（!!測定範囲を割り切れるものにすること!!）////////
-            double del_x, del_y;
-            del_x = 0.5;
-            del_y = 0.5;
+            //double xmax, xmin, ymax, ymin;         
+            //xmin = -1.0;
+            //xmax = 1.0;
+            //ymin = 2.0;
+            //ymax = 4.0;
+            /////////測定の刻み幅[m]（!!測定範囲を割り切れるものにすること!!）////////
+            //double delta;
+            //delta = 0.5;
             ///////ループ用変数の設定///////////////////////////////////////////////
             int X_loop, Y_loop;                               //ループ用変数
-            int XMIN, XMAX, YMIN, YMAX, DEL_X, DEL_Y;         //ループ用に[cm]に直す,int型にキャスト
+            int XMIN, XMAX, YMIN, YMAX, DELTA;         //ループ用に[cm]に直す,int型にキャスト
             XMIN = (int)(xmin * 100);
             XMAX = (int)(xmax * 100);
             YMIN = (int)(ymin * 100);
             YMAX = (int)(ymax * 100);
-            DEL_X = (int)(del_x * 100);
-            DEL_Y = (int)(del_y * 100);
+            DELTA = (int)(delta * 100);
             ///////ロボットプラットフォームの寸法設定[m]////////////////////////////
             double Height = 1.0;                             //PTUの高さ[m]
             double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
@@ -151,25 +153,32 @@ namespace Control_PTU
             var task = new Task(
                 () => {
                     //実行部（メインの流れ）********************************************************************
+                    //
                     //初期化関係
-                    Console.Write("initPanTilt\n"); //初期化
-                    port.Write("PP00 ");
-                    port.Write("TP00 ");
+                    Console.Write("setup... \n");  //初期化
+                    port.Write("S ");              //Slaved mode
+                    port.Write("PS500 ");       //Pan速度設定
+                    port.Write("TS500 ");       //Tilt速度設定
+                    port.Write("PP00 ");        //Pan0
+                    port.Write("TP00 ");        //Tilt0
                     port.Write("A ");
                     mre.Reset();            //一回停止させる
                     mre.WaitOne();
                     //
-                    Console.Write("setup... \n"); 
-                    port.Write("S ");           //Slaved mode
-                    port.Write("PS500 ");       //Pan速度設定
-                    port.Write("TS500 ");       //Tilt速度設定
-                    port.Write("A ");
-                    mre.Reset();            //一回停止させる
-                    mre.WaitOne();
+                    //時刻合わせ用タイムスタンプ
+                    port.Write("I ");           //Immediare mode
+                    port.Write("TP-200 ");       //***Tiltの動作角度入力***
+                    DateTime dt = DateTime.Now;
+                    string DT = dt.ToString("yyyy/MM/dd/HH:mm:ss.fff");      //string型に変換（ミリ秒まで取得）
+                    Console.WriteLine("■実行開始時刻: " + DT + "\n");       //タイムスタンプ 
+                    port.Write("S ");              //Slaved mode
+                    Thread.Sleep(3000);            //***停止時間(3sec)***
+                    //
 
-                    for (Y_loop = YMIN; Y_loop <= YMAX; Y_loop = Y_loop + DEL_Y)      //y方向（縦方向）のループ
+
+                    for (Y_loop = YMIN; Y_loop <= YMAX; Y_loop = Y_loop + DELTA)      //y方向（縦方向）のループ
                     {
-                        for (X_loop = XMIN; X_loop <= XMAX; X_loop = X_loop + DEL_X)  //x方向（横方向）のループ[行きがけ：-から+]/////////////
+                        for (X_loop = XMIN; X_loop <= XMAX; X_loop = X_loop + DELTA)  //x方向（横方向）のループ[行きがけ：-から+]/////////////
                         {
                             Xm = X_loop / 100.0;  //計算用にxy座標を[m]に直す
                             Ym = Y_loop / 100.0;
@@ -209,22 +218,22 @@ namespace Control_PTU
                             //Console.Write("\tPan:" + -deg_pan + "\tTilt:" + -deg_tilt);         //角度[degree]の表示
                             //Console.Write("\n");
                             //
-                            //port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
-                            //port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
+                            port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
+                            port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
                             port.Write("A ");                       //コマンド実行
                             mre.Reset();                            //一回停止させる
                             mre.WaitOne();
                             port.Write("MS ");                      //時間取得用フラグ（MS : Monitor status）
-                            Thread.Sleep(10);                       //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
-                            //Thread.Sleep(1000);                   //***停止時間(1sec)***
+                            //Thread.Sleep(10);                       //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
+                            Thread.Sleep(1000);                   //***停止時間(1sec)***
                             //
                             count++;                     //計測回数カウント
                         }////////////////////////////////////////////////////////////////////////////////////////////
 
-                        if (Y_loop + DEL_Y <= YMAX)  //帰りがけできるかの確認
+                        if (Y_loop + DELTA <= YMAX)  //帰りがけできるかの確認
                         {
-                            Y_loop = Y_loop + DEL_Y;            //y方向に+計測幅
-                            for (X_loop = XMAX; X_loop >= XMIN; X_loop = X_loop - DEL_X)  //x方向（横方向）のループ[帰りがけ：+から-]/////
+                            Y_loop = Y_loop + DELTA;            //y方向に+計測幅
+                            for (X_loop = XMAX; X_loop >= XMIN; X_loop = X_loop - DELTA)  //x方向（横方向）のループ[帰りがけ：+から-]/////
                             {
                                 Xm = X_loop / 100.0;  //計算用に[m]に直す
                                 Ym = Y_loop / 100.0;
@@ -264,14 +273,14 @@ namespace Control_PTU
                                 //Console.Write("\tPan:" + -deg_pan + "\tTilt:" + -deg_tilt);         //角度[degree]の表示
                                 //Console.Write("\n");
                                 //
-                                //port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
-                                //port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
+                                port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
+                                port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
                                 port.Write("A ");                         //コマンド実行
                                 mre.Reset();                              //一回停止させる
                                 mre.WaitOne();
                                 port.Write("MS ");                        //移動完了フラグ（MS : Monitor status）
-                                Thread.Sleep(10);                         //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
-                                //Thread.Sleep(1000);                     //***停止時間(1sec)***
+                                //Thread.Sleep(10);                         //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
+                                Thread.Sleep(1000);                     //***停止時間(1sec)***
                                 //
                                 count++;                     //計測回数カウント
                             }////////////////////////////////////////////////////////////////////////////////////////////
@@ -302,7 +311,7 @@ namespace Control_PTU
                     };
 
                     //CSV書き込み
-                    using (var writer = new CsvWriter(@"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge.csv"))      //CSV書き込み場所およびファイル名
+                    using (var writer = new CsvWriter(output_path))      //CSV書き込み場所およびファイル名
                     {
                         writer.Write(CSVdata);
                     }
