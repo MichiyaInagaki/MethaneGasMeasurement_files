@@ -8,11 +8,15 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO.Ports;
 using System.Threading;
+using System.IO;
 
 namespace Control_PTU
 {
     class Program
     {
+        //CSVファイル出力先のパス格納用
+        private static string output_path;
+
         static void Main(string[] args)
         {
             //接続部********************************************************************************************
@@ -51,8 +55,25 @@ namespace Control_PTU
                 {               
                     DateTime dt = DateTime.Now;                         //現在の時刻の取得
                     string DT = dt.ToString("yyyy/MM/dd/HH:mm:ss.fff"); //string型に変換（ミリ秒まで取得）
-                    Console.WriteLine("\tTime stamp: "+ DT);          //タイムスタンプ***
-                    timestampList.Add(DT);                              //リストに追加
+                    Console.WriteLine("\tTime stamp: "+ DT);            //タイムスタンプ***
+                    //CSV書き込み////////////////////////////////////////////////////////////////////////
+                    try
+                    {
+                        // appendをtrueにすると，既存のファイルに追記
+                        //         falseにすると，ファイルを新規作成する
+                        var append = true;
+                        // 出力用のファイルを開く
+                        using (var sw = new StreamWriter(output_path, append))
+                        {
+                            sw.WriteLine("{0}, {1}, {2},", DT, PAN, TILT);  //書き込み　時間，PAN, TILT
+                        }
+                    }
+                    catch (Exception err)
+                    {
+                        // ファイルを開くのに失敗したときエラーメッセージを表示
+                        Console.WriteLine(err.Message);
+                    }
+                    //////////////////////////////////////////////////////////////////////////////////////
                 }
             }
             //END受信部*****************************************************************************************
@@ -60,7 +81,7 @@ namespace Control_PTU
             //コマンド選択部************************************************************************************
             while (true)
             {
-                Console.Write("sキー：実行 / qキー：中断 / dキー：接続終了\n");
+                Console.WriteLine("sキー：実行 / qキー：中断 / dキー：接続終了");
                 var key = Console.ReadKey(false);
                 //接続終了
                 if (key.KeyChar == 'd')
@@ -76,11 +97,15 @@ namespace Control_PTU
                     //Exercute(port, xmin, xmax, ymin, ymax, delta, output_path)                      //
                     //xmin, xmax, ymin, ymax: 測定の範囲（パンチルトの左右方向がx，前後方向がy）[m]   //
                     //delta: 測定の刻み幅[m]（!!測定範囲を割り切れるものにすること!!）                //
-                    //output_path: @"出力先のパス\ファイル名.csv"                                     //
                     ////////////////////////////////////////////////////////////////////////////////////
-                    //Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.5);                                 //実行部へ
-                    Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge.csv");
+                    //Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\05MP_0.csv");
+                    //Exercute(port, 0.0, 2.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\05MP_2.csv");
+                    //Exercute(port, -2.0, 0.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\05MP_-2.csv");
+                    Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\MP_0.csv");
+                    //Exercute(port, -2.0, 0.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\MP_-2.csv");
+                    //Exercute(port, 0.0, 2.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\MP_2.csv");
                 }
+
             }
             //ENDコマンド選択部*********************************************************************************
         }
@@ -94,26 +119,15 @@ namespace Control_PTU
         //A*受信フラグ
         private static bool AstarFlag = false;
 
-        //CSV書き込み用リスト
-        private static List<string> panList = new List<string>();
-        private static List<string> tiltList = new List<string>();
-        private static List<string> timestampList = new List<string>();
-
+        //CSV書き込み用変数
+        private static string PAN = "0";
+        private static string TILT = "0";
 
         //実行部************************************************************************************************
-        private static void Exercute(SerialPort port, double xmin, double xmax, double ymin, double ymax, double delta, string output_path)
+        private static void Exercute(SerialPort port, double xmin, double xmax, double ymin, double ymax, double delta, string output)
         {
             //初期設定（計測範囲，最大角，変数設定）************************************************************
             int count = 1;                          //測定点の数カウント用
-            ///////測定の範囲（パンチルトの左右方向がx，前後方向がy）[m]/////////////
-            //double xmax, xmin, ymax, ymin;         
-            //xmin = -1.0;
-            //xmax = 1.0;
-            //ymin = 2.0;
-            //ymax = 4.0;
-            /////////測定の刻み幅[m]（!!測定範囲を割り切れるものにすること!!）////////
-            //double delta;
-            //delta = 0.5;
             ///////ループ用変数の設定///////////////////////////////////////////////
             int X_loop, Y_loop;                               //ループ用変数
             int XMIN, XMAX, YMIN, YMAX, DELTA;         //ループ用に[cm]に直す,int型にキャスト
@@ -143,11 +157,31 @@ namespace Control_PTU
             breakFlag = false;
             EndprocessFlag = false;
             AstarFlag = false;
+            //////ファイルパス読み込み//////////////////////////////////////////////
+            output_path = output;
             //////中断用ボタンの読み込み////////////////////////////////////////////
             ThreadPool.QueueUserWorkItem(new WaitCallback(interruption), null);     
             //////Task処理関係//////////////////////////////////////////////////////////
             CancellationTokenSource tokenSource = new CancellationTokenSource();    //タスクのキャンセルをするためのもの
             ManualResetEvent mre = new ManualResetEvent(true);                      //スレッドを待機させるためのもの
+            //////計測範囲のCSV書き込み////////////////////////////////////////////////////////////////////////
+            try
+            {
+                // appendをtrueにすると，既存のファイルに追記
+                //         falseにすると，ファイルを新規作成する
+                var append = true;
+                // 出力用のファイルを開く
+                using (var sw = new StreamWriter(output_path, append))
+                {
+                    sw.WriteLine("{0}, {1}, {2}, {3}", xmin, xmax, ymin, ymax);  //書き込み　時間，PAN, TILT
+                }
+            }
+            catch (Exception err)
+            {
+                // ファイルを開くのに失敗したときエラーメッセージを表示
+                Console.WriteLine(err.Message);
+            }
+            //////////////////////////////////////////////////////////////////////////////////////
             //END初期設定***************************************************************************************
 
             var task = new Task(
@@ -166,15 +200,32 @@ namespace Control_PTU
                     mre.WaitOne();
                     //
                     //時刻合わせ用タイムスタンプ
-                    port.Write("I ");           //Immediare mode
-                    port.Write("TP-200 ");       //***Tiltの動作角度入力***
+                    port.Write("I ");               //Immediare mode
+                    port.Write("TP-200 ");        //***Tiltの動作角度入力***
                     DateTime dt = DateTime.Now;
                     string DT = dt.ToString("yyyy/MM/dd/HH:mm:ss.fff");      //string型に変換（ミリ秒まで取得）
-                    Console.WriteLine("■実行開始時刻: " + DT + "\n");       //タイムスタンプ 
+                    Console.WriteLine("■同期開始時刻: " + DT + "\n");       //タイムスタンプ 
+                    //CSV書き込み////////////////////////////////////////////////////////////////////////
+                    try
+                    {
+                        // appendをtrueにすると，既存のファイルに追記
+                        //         falseにすると，ファイルを新規作成する
+                        var append = true;
+                        // 出力用のファイルを開く
+                        using (var sw = new StreamWriter(output_path, append))
+                        {
+                            sw.WriteLine("{0}, {1}, {2},", DT, 10000, 10000);  //書き込み　時間，PAN, TILT
+                        }
+                    }
+                    catch (Exception err)
+                    {
+                        // ファイルを開くのに失敗したときエラーメッセージを表示
+                        Console.WriteLine(err.Message);
+                    }
+                    //////////////////////////////////////////////////////////////////////////////////////
                     port.Write("S ");              //Slaved mode
                     Thread.Sleep(3000);            //***停止時間(3sec)***
                     //
-
 
                     for (Y_loop = YMIN; Y_loop <= YMAX; Y_loop = Y_loop + DELTA)      //y方向（縦方向）のループ
                     {
@@ -188,8 +239,8 @@ namespace Control_PTU
                             pos_tilt = -deg_tilt / degpos;      //Tilt-positionへの変換:[[-かける]]
                             pos_pan = Math.Round(pos_pan);      //数値の丸め（四捨五入）
                             pos_tilt = Math.Round(pos_tilt);
-                            panList.Add(pos_pan.ToString());    //CSV書き込み:pos_pan
-                            tiltList.Add(pos_tilt.ToString());  //CSV書き込み:pos_tilt
+                            PAN = pos_pan.ToString();           //CSV書き込みPAN
+                            TILT = pos_tilt.ToString();         //CSV書き込みPAN
 
                             //中断ボタン確認：qキーが押されれば中断する
                             if (_keyReaded)
@@ -224,7 +275,7 @@ namespace Control_PTU
                             mre.Reset();                            //一回停止させる
                             mre.WaitOne();
                             port.Write("MS ");                      //時間取得用フラグ（MS : Monitor status）
-                            //Thread.Sleep(10);                       //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
+                            //Thread.Sleep(20);                       //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
                             Thread.Sleep(1000);                   //***停止時間(1sec)***
                             //
                             count++;                     //計測回数カウント
@@ -243,8 +294,8 @@ namespace Control_PTU
                                 pos_tilt = -deg_tilt / degpos;      //Tilt-positionへの変換:-かける
                                 pos_pan = Math.Round(pos_pan);      //数値の丸め（四捨五入）
                                 pos_tilt = Math.Round(pos_tilt);
-                                panList.Add(pos_pan.ToString());    //CSV書き込み:pos_pan
-                                tiltList.Add(pos_tilt.ToString());  //CSV書き込み:pos_tilt
+                                PAN = pos_pan.ToString();           //CSV書き込みPAN
+                                TILT = pos_tilt.ToString();         //CSV書き込みTILT
 
                                 //中断ボタン確認：qキーが押されれば中断する
                                 if (_keyReaded)
@@ -279,7 +330,7 @@ namespace Control_PTU
                                 mre.Reset();                              //一回停止させる
                                 mre.WaitOne();
                                 port.Write("MS ");                        //移動完了フラグ（MS : Monitor status）
-                                //Thread.Sleep(10);                         //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
+                                //Thread.Sleep(20);                         //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
                                 Thread.Sleep(1000);                     //***停止時間(1sec)***
                                 //
                                 count++;                     //計測回数カウント
@@ -300,21 +351,6 @@ namespace Control_PTU
                     mre.Reset();            //一回停止させる
                     mre.WaitOne();
                     EndprocessFlag = true;  //実行終了フラグtrue
-
-                    //CSV書き込み用にリストをまとめる
-                    Console.WriteLine("CSV出力中…");
-                    var CSVdata = new List<List<string>>()
-                    {
-                        timestampList,
-                        panList,
-                        tiltList
-                    };
-
-                    //CSV書き込み
-                    using (var writer = new CsvWriter(output_path))      //CSV書き込み場所およびファイル名
-                    {
-                        writer.Write(CSVdata);
-                    }
                     Console.WriteLine("Finish！");
 
                     //END実行部（メインの流れ）********************************************************************
