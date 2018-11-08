@@ -11,11 +11,13 @@ namespace Mapping_Data
     {
         //各種初期設定*************************************************************************************************
         //////CSVファイルパス//////////////////////////////////////////////////////////////////////
-        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\";
+        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\";    //読み込み場所
+        private static string output_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\split_OP_05_moge.csv";       //出力先のパス(最終配列)
+        private static string output_path_y = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\split_OP_moge_y.csv";     //出力先のパス（測定値）
         //////同期時間の設定///////////////////////////////////////////////////////////////////////
-        private static TimeSpan initial_offset = new TimeSpan(0, 0, 0, 0, 500);  //TimeSpan(日，時間，分，秒，ミリ秒)    //時刻切り上げ分
-        private static TimeSpan interval_PTU = new TimeSpan(0, 0, 0, 0, 100);  //PTUの時間の正規化間隔***
-        private static TimeSpan interval_LMm = new TimeSpan(0, 0, 0, 0, 100);  //LMmの時間の正規化間隔***
+        private static TimeSpan initial_offset = new TimeSpan(0, 0, 0, 0, 400);  //TimeSpan(日，時間，分，秒，ミリ秒)    //時刻切り上げ分
+        private static TimeSpan interval_PTU = new TimeSpan(0, 0, 0, 0, 200);  //PTUの時間の正規化間隔***
+        private static TimeSpan interval_LMm = new TimeSpan(0, 0, 0, 0, 200);  //LMmの時間の正規化間隔***
         ///////ロボットプラットフォームの寸法設定[m]///////////////////////////////////////////////
         private static double Height = 1.0;                             //PTUの高さ[m]
         private static double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
@@ -23,7 +25,7 @@ namespace Mapping_Data
         private static double length_LMmG = 0.09;                       //回転中心からのLMｍ－Gの長さ[m](=LMm-Gの長さの半分)
         private static double resolition = 185.1429;                    //分解能
         ///////計測範囲，計測の刻み幅（!!計測時と同じもの!!ここは共通項!!）***/////////////////////
-        private static int measure_point = 3;   //計測ポイントの数
+        private static int measure_point = 3;   //計測ポイントの数***
         private static double delta = 0.5;      //刻み幅***
         private static double xmin = -1.0;
         private static double xmax = 1.0;
@@ -61,7 +63,9 @@ namespace Mapping_Data
         }
         //分割光路を格納する配列[計測点の数,ボクセルの数]=OP //これが欲しいデータリスト!////////////
         private static int temp_MP = measure_num * measure_point;
-        private static double[,] split_OP = new double[temp_MP, cell_size + 1];
+        private static double[,] split_OP = new double[temp_MP, cell_size];
+        //測定値を格納する配列
+        private static double[] LMm_value = new double[temp_MP];
         //END各種初期設定**********************************************************************************************
 
         static void Main(string[] args)
@@ -72,7 +76,7 @@ namespace Mapping_Data
             //分割光路長を格納する配列の初期化
             for (i = 0; i < measure_num * measure_point; i++)
             {
-                for (j = 0; j <= cell_size; j++)
+                for (j = 0; j < cell_size; j++)
                 {
                     split_OP[i, j] = 0;
                 }
@@ -92,13 +96,63 @@ namespace Mapping_Data
             //Exercute("MP0.csv", "2018_11_01_mp0.csv", 80);
             //Exercute("MP2.csv", "2018_11_01_mp2.csv", 80);
             //Exercute("MP-2.csv", "2018_11_01_mp-2.csv", 80);
+            Console.WriteLine("measurenum: " + measure_num * measure_point);
+            //最終配列の書き出し////////////////////////////////////////////////////////////////
+            //try
+            //{
+            //    // appendをtrueにすると，既存のファイルに追記
+            //    //         falseにすると，ファイルを新規作成する
+            //    var append = true;
+            //    // 出力用のファイルを開く
+            //    using (var sw = new StreamWriter(output_path, append))
+            //    {
+            //        for (i = 0; i < measure_num * measure_point; i++)
+            //        {
+            //            for (j = 0; j < cell_size; j++)
+            //            {
+            //                sw.Write(split_OP[i, j] + ",");   //書き込み
+            //            }
+            //            sw.WriteLine();  //改行
+            //        }
+            //    }
+            //}
+            //catch (Exception err)
+            //{
+            //    // ファイルを開くのに失敗したときエラーメッセージを表示
+            //    Console.WriteLine(err.Message);
+            //}
+            //////測定値の書き出し///////////////////////////////////////////////////////////////////
+            //try
+            //{
+            //    // appendをtrueにすると，既存のファイルに追記
+            //    //         falseにすると，ファイルを新規作成する
+            //    var append = true;
+            //    // 出力用のファイルを開く
+            //    using (var sw = new StreamWriter(output_path_y, append))
+            //    {
+            //        for (i = 0; i < measure_num * measure_point; i++)
+            //        {
+            //            sw.WriteLine(LMm_value[i]);  //書き込み
+            //        }
+            //    }
+            //}
+            //catch (Exception err)
+            //{
+            //    // ファイルを開くのに失敗したときエラーメッセージを表示
+            //    Console.WriteLine(err.Message);
+            //}
+            /////////////////////////////////////////////////////////////////////////////////////
         }
 
 
         //各種関数，静的変数など**************************************************************************************
-        //時間の正規化（切り上げ）のための関数///////////////////////////////////////////////////////
+        //時間の正規化のための関数///////////////////////////////////////////////////////
+        //切り上げ
         public static DateTime Time_RoundUp(DateTime input, TimeSpan interval)
             => new DateTime(((input.Ticks + interval.Ticks - 1) / interval.Ticks) * interval.Ticks, input.Kind);
+        //切り下げ
+        public static DateTime Time_RoundDown(DateTime input, TimeSpan interval)
+            => new DateTime((((input.Ticks + interval.Ticks) / interval.Ticks) - 1) * interval.Ticks, input.Kind);
         //数値の丸めを行う関数///////////////////////////////////////////////////////////////////////
         //切り上げ(データ，切り上げ間隔)
         public static double RoundUp(double data, double interval)
@@ -180,7 +234,7 @@ namespace Mapping_Data
             List<int> pos_tilt = str_pos_tilt.ConvertAll(x => int.Parse(x));         //Tilt角                                                                             
             int length_PTUdata = PTUtimestamp.Count;     //リストの長さの取得
             //PTUリストの表示確認
-            Console.WriteLine("■PTUデータの表示");
+            Console.WriteLine("■PTUデータの表示");    //***
             for (i = 0; i < length_PTUdata; i++)
             {
                 Console.WriteLine("PTU_TIME:" + PTUtimestamp[i].ToString("yyyy/MM/dd/HH:mm:ss.fff") + " PAN:" + pos_pan[i] + " TILT:" + pos_tilt[i]);
@@ -240,10 +294,10 @@ namespace Mapping_Data
             List<int> LMmmeasure = str_LMmmeasure.ConvertAll(x => int.Parse(x));    //LMm計測データ
 
             //時間の正規化
-            LMmtimestamp = LMmtimestamp.ConvertAll(x => Time_RoundUp(x, interval_LMm));
+            LMmtimestamp = LMmtimestamp.ConvertAll(x => Time_RoundDown(x, interval_LMm));
 
             //リストの表示確認
-            Console.WriteLine("■LMm-Gデータの表示");
+            Console.WriteLine("■LMm-Gデータの表示");  //***
             for (i = 0; i < Length_LMmList; i++)
             {
                 Console.WriteLine("LMm_TIME:" + LMmtimestamp[i].ToString("yyyy/MM/dd/HH:mm:ss.fff") + " LMm_measure:" + LMmmeasure[i]);
@@ -268,7 +322,7 @@ namespace Mapping_Data
             TimeSpan span = new TimeSpan();                     //タイムスタンプの差を格納
             TimeSpan null_time = new TimeSpan(0, 0, 0, 0, 0);   //NULL時間
             TimeSpan offset = (dt_flagtime_LMm - dt_flagtime_PTU) + initial_offset;  //TimeSpan(日，時間，分，秒，ミリ秒)    //PTUとAndroidの時間ずれ***
-
+            Console.WriteLine("■offset:" + offset + "\n");      //offsetの表示 
             //***PTUとAndroidの時間ずれ(オフセット)の修正***
             PTUtimestamp = PTUtimestamp.ConvertAll(x => x + offset);
 
@@ -299,7 +353,7 @@ namespace Mapping_Data
 
             //リストの表示確認
             int Length_List = Synchro_time.Count;            //行数を得る=計測数
-            Console.WriteLine("■同期済みデータの表示");
+            Console.WriteLine("■同期済みデータの表示");     //***
             for (i = 0; i < Length_List; i++)
             {
                 Console.WriteLine("TIME:" + Synchro_time[i].ToString("yyyy/MM/dd/HH:mm:ss.fff") + " Pan:" + PTU_Pan[i] + " Tilt:" + PTU_Tilt[i] + " LMm_Measure:" + LMm_Measure[i]);
@@ -310,17 +364,14 @@ namespace Mapping_Data
 
             //分割光路の計算******************************************************************************************
 
-
-            //hoge
-            //double hoge = get_VOXEL_num(-1,0.9,0.039);
-            //Console.WriteLine("measure_num:"+measure_num+" Length_List"+Length_List);
-            //CalOP(526,-499,1);
-
             //計算部
             //MN: 計測番号（初期化処理しない）
             for (i = 0; i < Length_List; i++, MN++)
             {
+                //分割光路の計算
                 CalOP(PTU_Pan[i], PTU_Tilt[i], MN, range);
+                //測定値の登録
+                LMm_value[MN] = LMm_Measure[i];
             }
             //最終配列の表示確認
             //for (i = 0; i < measure_num; i++)
@@ -386,7 +437,7 @@ namespace Mapping_Data
             {
                 rad_pan_modify = rad_pan - rad_beta;
             }
-            Console.WriteLine(" x_origin:" + x_origin + " y_origin:" + y_origin+" z_origin:"+zmax+" pan"+deg_pan+" tilt:"+deg_tilt);
+            //Console.WriteLine(" x_origin:" + x_origin + " y_origin:" + y_origin+" z_origin:"+zmax+" pan"+deg_pan+" tilt:"+deg_tilt);
             ///////ボクセル座標とボクセルナンバーを格納する構造体///////////////////
             INTERSECTION[] intersection_grid = new INTERSECTION[temp_len];
             //構造体の初期化
@@ -430,7 +481,7 @@ namespace Mapping_Data
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin) + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin, _xmax);
                     split_num++;
                 }
                 //y走査
@@ -441,14 +492,14 @@ namespace Mapping_Data
                     z_grid = zmax - Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin)) / Math.Tan(rad_tilt);
                     if (x_grid > _xmax || z_grid < 0)
                     {
-                        break;
+                        break;      //最終座標を超えればブレイク
                     }
                     //データ登録
                     intersection_grid[split_num].x = x_grid;
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin) + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin, _xmax);
                     split_num++;
                 }
                 //z走査
@@ -458,24 +509,24 @@ namespace Mapping_Data
                     y_grid = (zmax - z_grid) * Math.Tan(rad_tilt) * Math.Sin(rad_pan_modify) - (length_pan * Math.Cos(rad_pan_modify));
                     x_grid = (zmax - z_grid) * Math.Tan(rad_tilt) * Math.Cos(rad_pan_modify) + (length_pan * Math.Sin(rad_pan_modify));
 
-                    //if (x_grid > _xmax || y_grid > _ymax)
+                    if (x_grid > _xmax || y_grid > _ymax)
+                    {
+                        break;        //最終座標を超えればブレイク
+                    }
+                    //if (x_grid > _xmax)
                     //{
-                    //    break;        //z=0は必ず範囲内なのでブレイクしない
+                    //    x_grid = _xmax - 0.001;      //境界の特別処理（z=0の時の誤差を丸め込む）
                     //}
-                    if (x_grid > _xmax)
-                    {
-                        x_grid = _xmax - 0.01;      //境界の特別処理（z=0の時の誤差を丸め込む）
-                    }
-                    if (y_grid > _ymax)
-                    {
-                        y_grid = _ymax;
-                    }
+                    //if (y_grid > _ymax)
+                    //{
+                    //    y_grid = _ymax;
+                    //}
                     //データ登録
                     intersection_grid[split_num].x = x_grid;
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin) + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin, _xmax);
                     split_num++;
                 }
             }
@@ -502,7 +553,7 @@ namespace Mapping_Data
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin) + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_VOXEL_num(-x_grid, y_grid, z_grid, _xmin);
+                    intersection_grid[split_num].num = get_VOXEL_num(-x_grid, y_grid, z_grid, _xmin, _xmax);
                     split_num++;
                 }
                 //y走査
@@ -513,14 +564,14 @@ namespace Mapping_Data
                     z_grid = zmax - Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin)) / Math.Tan(rad_tilt);
                     if (x_grid < _xmin || z_grid < 0)
                     {
-                        break;
+                        break;              //最終座標を超えればブレイク
                     }
                     //データ登録
                     intersection_grid[split_num].x = x_grid;
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin) + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin, _xmax);
                     split_num++;
                 }
                 //z走査
@@ -530,25 +581,25 @@ namespace Mapping_Data
                     y_grid = (zmax - z_grid) * Math.Tan(rad_tilt) * Math.Sin(rad_pan_modify) + (length_pan * Math.Cos(rad_pan_modify));
                     x_grid = -(zmax - z_grid) * Math.Tan(rad_tilt) * Math.Cos(rad_pan_modify) + (length_pan * Math.Sin(rad_pan_modify));     //xを負にする
 
-                    //if (x_grid < _xmin || y_grid > _ymax)
+                    if (x_grid < _xmin || y_grid > _ymax)
+                    {
+                        break;
+                    }
+                    //if (x_grid < _xmin)
                     //{
-                    //    break;
+                    //    x_grid = _xmin+0.001;      //境界の特別処理（z=0の時の誤差を丸め込む）//+0.01は0にしないための処理
                     //}
-                    if (x_grid < _xmin)
-                    {
-                        x_grid = _xmin+0.01;      //境界の特別処理（z=0の時の誤差を丸め込む）//+0.01は0にしないための処理
-                    }
-                    if (y_grid > _ymax)
-                    {
-                        y_grid = _ymax;
-                    }
+                    //if (y_grid > _ymax)
+                    //{
+                    //    y_grid = _ymax;
+                    //}
 
                     //データ登録
                     intersection_grid[split_num].x = x_grid;
                     intersection_grid[split_num].y = y_grid;
                     intersection_grid[split_num].z = z_grid;
                     intersection_grid[split_num].len = Math.Sqrt((x_grid - x_origin) * (x_grid - x_origin) + (y_grid - y_origin) * (y_grid - y_origin) + (zmax - z_grid) * (zmax - z_grid));
-                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin);
+                    intersection_grid[split_num].num = get_VOXEL_num(x_grid, y_grid, z_grid, _xmin, _xmax);
                     split_num++;
                 }
             }
@@ -584,10 +635,42 @@ namespace Mapping_Data
                 }
             }
             //opの計算確認
-            for (i = 0; i < temp_len; i++)
+            for (i = 0; i < temp_len; i++)      //***
             {
                 Console.WriteLine("num:" + i + " x" + intersection_grid[i].x + " y:" + intersection_grid[i].y + " z:" + intersection_grid[i].z + " len:" + intersection_grid[i].len + " num:" + intersection_grid[i].num + " op:" + intersection_grid[i].op);
             }
+            //光路の計算を見るよう
+            //try
+            //{
+            //    // appendをtrueにすると，既存のファイルに追記
+            //    //         falseにすると，ファイルを新規作成する
+            //    var append = true;
+            //    // 出力用のファイルを開く
+            //    using (var sw = new StreamWriter(@"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\OPshow2.csv", append))
+            //    {
+            //        for (i = 0; i < temp_len; i++)
+            //        {
+            //            sw.Write(intersection_grid[i].x + ",");   //書き込み
+            //        }
+            //        sw.WriteLine("x");  //改行
+            //        for (i = 0; i < temp_len; i++)
+            //        {
+            //            sw.Write(intersection_grid[i].y + ",");   //書き込み
+            //        }
+            //        sw.WriteLine("y");  //改行
+            //        for (i = 0; i < temp_len; i++)
+            //        {
+            //            sw.Write(intersection_grid[i].z + ",");   //書き込み
+            //        }
+            //        sw.WriteLine("z");  //改行
+            //    }
+            //}
+            //catch (Exception err)
+            //{
+            //    // ファイルを開くのに失敗したときエラーメッセージを表示
+            //    Console.WriteLine(err.Message);
+            //}
+
             //値を最終配列に入れる//////////////////////////////////////////////////////////////////
             Console.WriteLine("MM"+MEASURE_NUMBER);
             for (i = 0; i < temp_len; i++)
@@ -611,8 +694,16 @@ namespace Mapping_Data
 
         //ボクセルナンバー取得関係************************************************************************************
         //交点のグリッド座標からボクセルナンバーを取得する関数***
-        private static int get_VOXEL_num(double x, double y, double z, double _xmin)
+        private static int get_VOXEL_num(double x, double y, double z, double _xmin, double _xmax)
         {
+            if (x < _xmin)
+            {
+                x = _xmin;      //例外処理0付近の話
+            }
+            if (x > _xmax)
+            {
+                x = _xmax;      //例外処理0付近の話
+            }
             //Console.WriteLine("▼x:" + x + "y:" + y + "z" + z);
             int num;
             int voxel_x = (int)(RoundUp(x, delta) / delta);   //RoundDown(x, delta):分解能まで正規化，/deltaでボクセル座標に変換
@@ -625,11 +716,11 @@ namespace Mapping_Data
         }
 
         //ボクセルナンバーを格納する配列
-        private static int[,,] voxel_num = new int[Xrange+2, Yrange+2, Zrange+2];
+        private static int[,,] voxel_num = new int[Xrange, Yrange, Zrange];
         //ボクセルナンバーをふる関数
         private static void create_VOXEL_num()
         {
-            int num = 1;
+            int num = 0;
             int i, j, k;
 
             for (k = 0; k < Zrange; k++)
@@ -638,7 +729,7 @@ namespace Mapping_Data
                 {
                     for(i = 0; i < Xrange; i++)
                     {
-                        Console.WriteLine("voxel_num:" + num);
+                        //Console.WriteLine("voxel_num:" + num);
                         voxel_num[i, j, k] = num;
                         num++;
                     }
