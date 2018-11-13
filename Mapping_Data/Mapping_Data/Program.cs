@@ -11,34 +11,34 @@ namespace Mapping_Data
     {
         //各種初期設定*************************************************************************************************
         //////CSVファイルパス//////////////////////////////////////////////////////////////////////
-        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\";    //読み込み場所
-        private static string output_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\split_OP_05_moge.csv";       //出力先のパス(最終配列)
-        private static string output_path_y = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\split_OP_moge_y.csv";     //出力先のパス（測定値）
+        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\";    //読み込み場所
+        private static string output_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\Split_OP.csv";       //出力先のパス(最終配列)
+        private static string output_path_y = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\Split_OP_y.csv";     //出力先のパス（測定値）
         //////同期時間の設定///////////////////////////////////////////////////////////////////////
         private static TimeSpan initial_offset = new TimeSpan(0, 0, 0, 0, 400);  //TimeSpan(日，時間，分，秒，ミリ秒)    //時刻切り上げ分
         private static TimeSpan interval_PTU = new TimeSpan(0, 0, 0, 0, 200);  //PTUの時間の正規化間隔***
         private static TimeSpan interval_LMm = new TimeSpan(0, 0, 0, 0, 200);  //LMmの時間の正規化間隔***
         ///////ロボットプラットフォームの寸法設定[m]///////////////////////////////////////////////
-        private static double Height = 1.0;                             //PTUの高さ[m]
+        private static double Height = 0.273 + 0.01 + 0.091;            //PTUの高さ[m]=移動ロボットの高さ+固定盤の厚み+PTUの腕関節までの長さ
         private static double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
         private static double length_pan = 0.019;                       //レーザーの発射口とファイ回転軸中心からのずれ[m]
         private static double length_LMmG = 0.09;                       //回転中心からのLMｍ－Gの長さ[m](=LMm-Gの長さの半分)
         private static double resolition = 185.1429;                    //分解能
         ///////計測範囲，計測の刻み幅（!!計測時と同じもの!!ここは共通項!!）***/////////////////////
-        private static int measure_point = 3;   //計測ポイントの数***
-        private static double delta = 0.5;      //刻み幅***
-        private static double xmin = -1.0;
-        private static double xmax = 1.0;
-        private static double ymin = 2.0;
-        private static double ymax = 4.0;
+        private static int measure_point = 11;   //***計測ポイントの数***
+        private static double delta = 0.2;      //***刻み幅***
+        private static double xmin = -1.0;       //***deltaで割り切れるもの！
+        private static double xmax = 1.0;       //***deltaで割り切れるもの！
+        private static double ymin = 0.6;
+        private static double ymax = 2.6;
         private static double zmax = Height + length_tilt;
         //ボクセル設定用////////////////////////////////////////////////////////////////////////////
-        private static int Xrange = (int)(xmax / delta) - (int)(xmin / delta);            //x方向のセルの数
-        private static int Yrange = (int)(ymax / delta);                                  //y方向のセルの数　※yminは考慮しない（LMm-Gの始点はy=0にあるため）
-        private static int Zrange = (int)(RoundUp(Height + length_tilt, delta) / delta);  //z方向のセルの数（PTUの高さを分解能で切り上げたもの）
+        private static int Xrange = RangetoNum(xmax) - RangetoNum(xmin);            //x方向のセルの数
+        private static int Yrange = RangetoNum(ymax);                                  //y方向のセルの数　※yminは考慮しない（LMm-Gの始点はy=0にあるため）
+        private static int Zrange = RangetoNum(RoundUp(Height + length_tilt, delta));  //z方向のセルの数（PTUの高さを分解能で切り上げたもの）
         private static int cell_size = Xrange * Yrange * Zrange;                          //すべてのセルの数
         ///////計測点の総数////////////////////////////////////////////////////////////////////////
-        private static int measure_num = (Xrange + 1) * ((int)(ymax / delta) - (int)(ymin / delta) + 1);
+        private static int measure_num = (Xrange + 1) * (RangetoNum(ymax) - RangetoNum(ymin) + 1);
         private static int MP = 0;      //計測回数カウント用
         private static int MN = 0;      //計測ナンバー格納用
         //光路の分割数の最大値（仮）///////////////////////////////////////////////////////////////
@@ -90,57 +90,68 @@ namespace Mapping_Data
             ////////////////////////Exercute関数の仕様//////////////////////////////////////////
             //Exercute(PTU_file_path, LMm_file_path, フラグ用の閾値)                          //
             ////////////////////////////////////////////////////////////////////////////////////
-            Exercute("05MP_0.csv", "2018_11_02_mp0.csv", 80);
-            Exercute("05MP_2.csv", "2018_11_02_mp2.csv", 80);
-            Exercute("05MP_-2.csv", "2018_11_02_mp-2.csv", 80);
+            Exercute("MP_00_02.csv", "2018_11_14_mp0020.csv", 120);
+            Exercute("MP_-02_18.csv", "2018_11_14_mp-0218.csv", 120);
+            Exercute("MP_-04_16.csv", "2018_11_14_mp-0416.csv", 120);
+            Exercute("MP_-06_14.csv", "2018_11_14_mp-0614.csv", 120);
+            Exercute("MP_-08_12.csv", "2018_11_14_mp-0812.csv", 120);
+            Exercute("MP_-10_10.csv", "2018_11_14_mp-1010.csv", 120);
+            Exercute("MP_-12_08.csv", "2018_11_14_mp-1208.csv", 120);
+            Exercute("MP_-14_06.csv", "2018_11_14_mp-1406.csv", 120);
+            Exercute("MP_-16_04.csv", "2018_11_14_mp-1604.csv", 120);
+            Exercute("MP_-18_02.csv", "2018_11_14_mp-1802.csv", 120);
+            Exercute("MP_-20_00.csv", "2018_11_14_mp-2000.csv", 120);
+            //Exercute("MP0.csv", "2018_11_01_mp0.csv", 80);
+            //Exercute("MP2.csv", "2018_11_01_mp2.csv", 80);
+            //Exercute("MP-2.csv", "2018_11_01_mp-2.csv", 80);
             //Exercute("MP0.csv", "2018_11_01_mp0.csv", 80);
             //Exercute("MP2.csv", "2018_11_01_mp2.csv", 80);
             //Exercute("MP-2.csv", "2018_11_01_mp-2.csv", 80);
             Console.WriteLine("measurenum: " + measure_num * measure_point);
             //最終配列の書き出し////////////////////////////////////////////////////////////////
-            //try
-            //{
-            //    // appendをtrueにすると，既存のファイルに追記
-            //    //         falseにすると，ファイルを新規作成する
-            //    var append = true;
-            //    // 出力用のファイルを開く
-            //    using (var sw = new StreamWriter(output_path, append))
-            //    {
-            //        for (i = 0; i < measure_num * measure_point; i++)
-            //        {
-            //            for (j = 0; j < cell_size; j++)
-            //            {
-            //                sw.Write(split_OP[i, j] + ",");   //書き込み
-            //            }
-            //            sw.WriteLine();  //改行
-            //        }
-            //    }
-            //}
-            //catch (Exception err)
-            //{
-            //    // ファイルを開くのに失敗したときエラーメッセージを表示
-            //    Console.WriteLine(err.Message);
-            //}
-            //////測定値の書き出し///////////////////////////////////////////////////////////////////
-            //try
-            //{
-            //    // appendをtrueにすると，既存のファイルに追記
-            //    //         falseにすると，ファイルを新規作成する
-            //    var append = true;
-            //    // 出力用のファイルを開く
-            //    using (var sw = new StreamWriter(output_path_y, append))
-            //    {
-            //        for (i = 0; i < measure_num * measure_point; i++)
-            //        {
-            //            sw.WriteLine(LMm_value[i]);  //書き込み
-            //        }
-            //    }
-            //}
-            //catch (Exception err)
-            //{
-            //    // ファイルを開くのに失敗したときエラーメッセージを表示
-            //    Console.WriteLine(err.Message);
-            //}
+            try
+            {
+                // appendをtrueにすると，既存のファイルに追記
+                //         falseにすると，ファイルを新規作成する
+                var append = true;
+                // 出力用のファイルを開く
+                using (var sw = new StreamWriter(output_path, append))
+                {
+                    for (i = 0; i < measure_num * measure_point; i++)
+                    {
+                        for (j = 0; j < cell_size; j++)
+                        {
+                            sw.Write(split_OP[i, j] + ",");   //書き込み
+                        }
+                        sw.WriteLine();  //改行
+                    }
+                }
+            }
+            catch (Exception err)
+            {
+                // ファイルを開くのに失敗したときエラーメッセージを表示
+                Console.WriteLine(err.Message);
+            }
+            ////測定値の書き出し///////////////////////////////////////////////////////////////////
+            try
+            {
+                // appendをtrueにすると，既存のファイルに追記
+                //         falseにすると，ファイルを新規作成する
+                var append = true;
+                // 出力用のファイルを開く
+                using (var sw = new StreamWriter(output_path_y, append))
+                {
+                    for (i = 0; i < measure_num * measure_point; i++)
+                    {
+                        sw.WriteLine(LMm_value[i]);  //書き込み
+                    }
+                }
+            }
+            catch (Exception err)
+            {
+                // ファイルを開くのに失敗したときエラーメッセージを表示
+                Console.WriteLine(err.Message);
+            }
             /////////////////////////////////////////////////////////////////////////////////////
         }
 
@@ -170,6 +181,18 @@ namespace Mapping_Data
         public static double RoundDown(double data, double interval)
         {
             return (int)(data / interval) * interval;
+        }
+        //int型へのキャスト問題を解消するための関数：(int)(0.3/0.1)=0.2となる問題
+        public static int RangetoNum(double d_num)
+        {
+            if (d_num >= 0)
+            {
+                return (int)(d_num / delta + 0.0001);
+            }
+            else
+            {
+                return (int)(d_num / delta - 0.0001);
+            }
         }
         //END各種関数，静的変数など***********************************************************************************
 
@@ -233,13 +256,13 @@ namespace Mapping_Data
             List<int> pos_pan = str_pos_pan.ConvertAll(x => int.Parse(x));           //Pan角
             List<int> pos_tilt = str_pos_tilt.ConvertAll(x => int.Parse(x));         //Tilt角                                                                             
             int length_PTUdata = PTUtimestamp.Count;     //リストの長さの取得
-            //PTUリストの表示確認
-            Console.WriteLine("■PTUデータの表示");    //***
-            for (i = 0; i < length_PTUdata; i++)
-            {
-                Console.WriteLine("PTU_TIME:" + PTUtimestamp[i].ToString("yyyy/MM/dd/HH:mm:ss.fff") + " PAN:" + pos_pan[i] + " TILT:" + pos_tilt[i]);
-            }
-            Console.WriteLine();
+            //PTUリストの表示確認***
+            //Console.WriteLine("■PTUデータの表示");    //***
+            //for (i = 0; i < length_PTUdata; i++)
+            //{
+            //    Console.WriteLine("PTU_TIME:" + PTUtimestamp[i].ToString("yyyy/MM/dd/HH:mm:ss.fff") + " PAN:" + pos_pan[i] + " TILT:" + pos_tilt[i]);
+            //}
+            //Console.WriteLine();
             //END:PTUデータ読み込み*******************************************************************************
 
             //LMm-Gデータ読み込み*********************************************************************************
@@ -296,13 +319,13 @@ namespace Mapping_Data
             //時間の正規化
             LMmtimestamp = LMmtimestamp.ConvertAll(x => Time_RoundDown(x, interval_LMm));
 
-            //リストの表示確認
-            Console.WriteLine("■LMm-Gデータの表示");  //***
-            for (i = 0; i < Length_LMmList; i++)
-            {
-                Console.WriteLine("LMm_TIME:" + LMmtimestamp[i].ToString("yyyy/MM/dd/HH:mm:ss.fff") + " LMm_measure:" + LMmmeasure[i]);
-            }
-            Console.WriteLine();
+            //リストの表示確認***
+            //Console.WriteLine("■LMm-Gデータの表示");  //***
+            //for (i = 0; i < Length_LMmList; i++)
+            //{
+            //    Console.WriteLine("LMm_TIME:" + LMmtimestamp[i].ToString("yyyy/MM/dd/HH:mm:ss.fff") + " LMm_measure:" + LMmmeasure[i]);
+            //}
+            //Console.WriteLine();
             //END:LMm-Gデータ読み込み******************************************************************************
 
             //時間同期させたデータセットの作成*********************************************************************
@@ -463,11 +486,11 @@ namespace Mapping_Data
                 x_loop = 1;     //xループの開始点
                 if (_xmin > 0)   //_xminが正ならxループの開始点を変更する
                 {
-                    x_loop = (int)(_xmin / delta);
+                    x_loop = RangetoNum(_xmin);
                 }
 
                 //x走査
-                for (; x_loop <= (int)(_xmax / delta); x_loop++)  // x_loop = 1 は delta/delta のこと(ループ用に整数に直しているだけ)
+                for (; x_loop <= RangetoNum(_xmax); x_loop++)  // x_loop = 1 は delta/delta のこと(ループ用に整数に直しているだけ)
                 {
                     x_grid = x_loop * delta;    //グリッド座標に変換
                     y_grid = x_grid * Math.Tan(rad_pan_modify) - (length_pan / Math.Cos(rad_pan_modify));
@@ -485,7 +508,7 @@ namespace Mapping_Data
                     split_num++;
                 }
                 //y走査
-                for (y_loop = 1; y_loop <= (int)(_ymax / delta); y_loop++)
+                for (y_loop = 1; y_loop <= RangetoNum(_ymax); y_loop++)
                 {
                     y_grid = y_loop * delta;    //グリッドに変換
                     x_grid = y_grid / Math.Tan(rad_pan_modify) + (length_pan / Math.Sin(rad_pan_modify));
@@ -535,11 +558,11 @@ namespace Mapping_Data
                 x_loop = 1;     //xループの開始点
                 if (_xmax < 0)   //_xmaxが負ならxループの開始点を変更する
                 {
-                    x_loop = -(int)(_xmax / delta);
+                    x_loop = -RangetoNum(_xmax);
                 }
 
                 //x走査
-                for (; x_loop <= -(int)(_xmin / delta); x_loop++)  // x_loop = 1 は delta/delta のこと(ループ用に整数に直しているだけ)
+                for (; x_loop <= -RangetoNum(_xmin); x_loop++)  // x_loop = 1 は delta/delta のこと(ループ用に整数に直しているだけ)
                 {
                     x_grid = x_loop * delta;    //グリッド座標に変換    
                     y_grid = x_grid * Math.Tan(rad_pan_modify) + (length_pan / Math.Cos(rad_pan_modify));
@@ -557,7 +580,7 @@ namespace Mapping_Data
                     split_num++;
                 }
                 //y走査
-                for (y_loop = 1; y_loop <= (int)(_ymax / delta); y_loop++)
+                for (y_loop = 1; y_loop <= RangetoNum(_ymax); y_loop++)
                 {
                     y_grid = y_loop * delta;    //グリッドに変換
                     x_grid = - y_grid / Math.Tan(rad_pan_modify) + (length_pan / Math.Sin(rad_pan_modify));      //xを負にする
@@ -706,9 +729,9 @@ namespace Mapping_Data
             }
             //Console.WriteLine("▼x:" + x + "y:" + y + "z" + z);
             int num;
-            int voxel_x = (int)(RoundUp(x, delta) / delta);   //RoundDown(x, delta):分解能まで正規化，/deltaでボクセル座標に変換
-            int voxel_y = (int)(RoundUp(y, delta) / delta);
-            int voxel_z = (int)(RoundDown(z, delta) / delta) + 1;
+            int voxel_x = RangetoNum(RoundUp(x, delta));   //RoundDown(x, delta):分解能まで正規化，/deltaでボクセル座標に変換
+            int voxel_y = RangetoNum(RoundUp(y, delta));
+            int voxel_z = RangetoNum(RoundDown(z, delta)) + 1;
             //Console.WriteLine("▲x:" + voxel_x + "y:" + voxel_y + "z" + voxel_z);
             num = trans_Voxel_num(voxel_x, voxel_y, voxel_z, _xmin);
 
@@ -729,7 +752,7 @@ namespace Mapping_Data
                 {
                     for(i = 0; i < Xrange; i++)
                     {
-                        //Console.WriteLine("voxel_num:" + num);
+                        //Console.WriteLine("x:"+i+" y:"+j+" z:"+k+" voxel_num:" + num);
                         voxel_num[i, j, k] = num;
                         num++;
                     }
@@ -741,13 +764,13 @@ namespace Mapping_Data
         {
             if (x < 0)  //配列に合うように値を補正する
             {
-                x = x - (int)(_xmin / delta);
+                x = x - RangetoNum(_xmin);
                 y = y - 1;
                 z = z - 1;
             }
             else
             {
-                x = x - (int)(_xmin / delta) - 1;    //ボクセル座標のx座標には0がないので-1して詰める
+                x = x - RangetoNum(_xmin) - 1;    //ボクセル座標のx座標には0がないので-1して詰める
                 y = y - 1;
                 z = z - 1;
             }
