@@ -20,7 +20,7 @@ namespace Control_PTU
         static void Main(string[] args)
         {
             //接続部********************************************************************************************
-            SerialPort port = new SerialPort("COM5", 9600, Parity.None, 8, StopBits.One);      //通信設定
+            SerialPort port = new SerialPort("COM3", 9600, Parity.None, 8, StopBits.One);      //通信設定
             try
             {
                 port.Open();
@@ -98,12 +98,64 @@ namespace Control_PTU
                     //xmin, xmax, ymin, ymax: 測定の範囲（パンチルトの左右方向がx，前後方向がy）[m]   //
                     //delta: 測定の刻み幅[m]（!!測定範囲を割り切れるものにすること!!）                //
                     ////////////////////////////////////////////////////////////////////////////////////
-                    //Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\05MP_0.csv");
-                    //Exercute(port, 0.0, 2.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\05MP_2.csv");
-                    //Exercute(port, -2.0, 0.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\05MP_-2.csv");
-                    Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\MP_0.csv");
-                    //Exercute(port, -2.0, 0.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\MP_-2.csv");
-                    //Exercute(port, 0.0, 2.0, 2.0, 4.0, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\MP_2.csv");
+
+                    switch (exercute_num)   //sキーを押すたびに次の動作に移る
+                    {
+                        case 0:
+                            //Exercute(port, -0.25, 0.25, 0.5, 1.0, 0.1, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\pretest_0.csv");
+                            //Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge_0.csv");
+                            Exercute(port, 0.0, 2.0, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_00_20.csv");
+                            exercute_num++;
+                            break;
+                        case 1:
+                            //Exercute(port, -0.5, 0.0, 0.5, 1.0, 0.1, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\pretest_05.csv");
+                            //Exercute(port, 0.0, 2.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge_2.csv");
+                            Exercute(port, -0.2, 1.8, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-02_18.csv");
+                            exercute_num++;
+                            break;
+                        case 2:
+                            //Exercute(port, 0.0, 0.5, 0.5, 1.0, 0.1, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\pretest_-05.csv");
+                            //Exercute(port, -2.0, 0.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge_-2.csv");
+                            Exercute(port, -0.4, 1.6, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-04_16.csv");
+                            exercute_num++;
+                            break;
+                        case 3:
+                            Exercute(port, -0.6, 1.4, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-06_14.csv");
+                            exercute_num++;
+                            break;
+                        case 4:
+                            Exercute(port, -0.8, 1.2, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-08_12.csv");
+                            exercute_num++;
+                            break;
+                        case 5:
+                            Exercute(port, -1.0, 1.0, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-10_10.csv");
+                            exercute_num++;
+                            break;
+                        case 6:
+                            Exercute(port, -1.2, 0.8, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-12_08.csv");
+                            exercute_num++;
+                            break;
+                        case 7:
+                            Exercute(port, -1.4, 0.6, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-14_06.csv");
+                            exercute_num++;
+                            break;
+                        case 8:
+                            Exercute(port, -1.6, 0.4, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-16_04.csv");
+                            exercute_num++;
+                            break;
+                        case 9:
+                            Exercute(port, -1.8, 0.2, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-18_02.csv");
+                            exercute_num++;
+                            break;
+                        case 10:
+                            Exercute(port, -2.0, 0.0, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-20_00.csv");
+                            exercute_num++;
+                            break;
+                        default:
+                            Console.WriteLine("すべての計測が終わりました");
+                            break;
+                    }
+
                 }
 
             }
@@ -123,9 +175,14 @@ namespace Control_PTU
         private static string PAN = "0";
         private static string TILT = "0";
 
+        //実行回数フラグ
+        private static int exercute_num = 0;
+
         //実行部************************************************************************************************
         private static void Exercute(SerialPort port, double xmin, double xmax, double ymin, double ymax, double delta, string output)
         {
+            //計測範囲の記述
+            Console.WriteLine("xmin:" + xmin + " xmax:" + xmax + " ymin:" + ymin + " ymax:" + ymax + " delta" +delta);
             //初期設定（計測範囲，最大角，変数設定）************************************************************
             int count = 1;                          //測定点の数カウント用
             ///////ループ用変数の設定///////////////////////////////////////////////
@@ -137,7 +194,7 @@ namespace Control_PTU
             YMAX = (int)(ymax * 100);
             DELTA = (int)(delta * 100);
             ///////ロボットプラットフォームの寸法設定[m]////////////////////////////
-            double Height = 1.0;                             //PTUの高さ[m]
+            double Height = 0.273 + 0.01 +0.091;             //PTUの高さ[m]=移動ロボットの高さ+固定盤の厚み+PTUの腕関節までの長さ
             double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
             double length_pan = 0.019;                       //レーザーの発射口とファイ回転軸中心からのずれ[m]
             ///////最大角，最小角の設定[pos]////////////////////////////////////////
