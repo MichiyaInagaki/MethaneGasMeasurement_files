@@ -14,8 +14,18 @@ namespace Control_PTU
 {
     class Program
     {
-        //CSVファイル出力先のパス格納用
-        private static string output_path;
+        //初期設定//////////////////////////////////////////////////////////////////////////////////
+        //CSVファイルパス
+        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\map2test\";    //書き込み場所
+        private static string output_path;        //CSVファイル出力先のパス格納用
+        //計測範囲の設定
+        private static double _xmin = -1.0;
+        private static double _xmax = 1.0;
+        private static double _ymin = 0.6;
+        private static double _ymax = 2.6;
+        private static double _delta = 0.2;     //計測点の刻み幅
+        private static double _delta_PTU = 0.2; //PTUを置く位置の刻み幅
+        //END初期設定///////////////////////////////////////////////////////////////////////////////
 
         static void Main(string[] args)
         {
@@ -81,13 +91,100 @@ namespace Control_PTU
             //コマンド選択部************************************************************************************
             while (true)
             {
-                Console.WriteLine("sキー：実行 / qキー：中断 / dキー：接続終了");
+                Console.WriteLine("sキー：実行 / qキー：中断 / dキー：接続終了 / fキー：フラグ時刻の取得 / cキー：キャリブレーション用");
                 var key = Console.ReadKey(false);
                 //接続終了
                 if (key.KeyChar == 'd')
                 {
                     Disconnect(port);
                     Environment.Exit(0);    //コンソールアプリケーションの終了
+                }
+
+                //フラグ時刻の取得
+                if (key.KeyChar == 'f')
+                {
+                    //時刻合わせ用タイムスタンプ
+                    port.Write("I ");               //Immediare mode
+                    port.Write("TP-200 ");        //***Tiltの動作角度入力***
+                    DateTime dt = DateTime.Now;
+                    string DT = dt.ToString("yyyy/MM/dd/HH:mm:ss.fff");      //string型に変換（ミリ秒まで取得）
+                    Console.WriteLine("■同期開始時刻: " + DT + "\n");       //タイムスタンプ 
+                    //CSV書き込み////////////////////////////////////////////////////////////////////////
+                    try
+                    {
+                        // appendをtrueにすると，既存のファイルに追記
+                        //         falseにすると，ファイルを新規作成する
+                        var append = true;
+                        // 出力用のファイルを開く
+                        using (var sw = new StreamWriter(csv_path+"Flag_time.csv", append))
+                        {
+                            sw.WriteLine(DT);  //書き込み
+                        }
+                    }
+                    catch (Exception err)
+                    {
+                        // ファイルを開くのに失敗したときエラーメッセージを表示
+                        Console.WriteLine(err.Message);
+                    }
+                    //////////////////////////////////////////////////////////////////////////////////////
+                    port.Write("S ");              //Slaved mode
+                }
+
+                //キャリブレーション用
+                if (key.KeyChar == 'c')
+                {
+                    //座標入力
+                    Console.Write("X座標: ");
+                    double Xp = double.Parse(Console.ReadLine());
+                    Console.Write("Y座標: ");
+                    double Yp = double.Parse(Console.ReadLine());
+                    //高さ設定
+                    double Height = 0.273 + 0.01 + 0.091;            //PTUの高さ[m]=移動ロボットの高さ+固定盤の厚み+PTUの腕関節までの長さ
+                    double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
+                    double length_pan = 0.019;                       //レーザーの発射口とファイ回転軸中心からのずれ[m]
+                    //初期化
+                    port.Write("S ");           //Slaved mode
+                    port.Write("PS500 ");       //Pan速度設定
+                    port.Write("TS500 ");       //Tilt速度設定
+                    port.Write("PP00 ");        //Pan0
+                    port.Write("TP00 ");        //Tilt0
+                    port.Write("A ");
+                    //角度計算
+                    int pos_pan_max, pos_pan_min, pos_tilt_max, pos_tilt_min;
+                    pos_pan_max = 3094;
+                    pos_pan_min = -3095;
+                    pos_tilt_max = 593;
+                    pos_tilt_min = -908;
+                    //
+                    double resolition = 185.1429;       //分解能
+                    double degpos = resolition / 3600;  //[degree/position]
+                    double deg_pan, deg_tilt, pos_pan, pos_tilt;
+                    //角度計算
+                    deg_pan = CalPan(Xp, Yp, length_pan);                           //ファイ(degree)の取得
+                    deg_tilt = CalTilt(Xp, Yp, Height, length_tilt, length_pan);    //シータ(degree)の取得
+                    pos_pan = -deg_pan / degpos;        //Pan-potitionへの変換 :[[-かける]]
+                    pos_tilt = -deg_tilt / degpos;      //Tilt-positionへの変換:[[-かける]]
+                    pos_pan = Math.Round(pos_pan);      //数値の丸め（四捨五入）
+                    pos_tilt = Math.Round(pos_tilt);
+                    Console.WriteLine("キャリブレーション>" + " X:" + Xp + " Y:" + Yp + " deg_pan:" + deg_pan + " deg_tilt:" + deg_tilt);
+                    //動作範囲確認：動作範囲を越えた場合中断する
+                    if (pos_pan > pos_pan_max || pos_pan < pos_pan_min || pos_tilt > pos_tilt_max || pos_tilt < pos_tilt_min)
+                    {
+                        Console.WriteLine("***error![over moving range]***");
+                    }
+                    else
+                    {
+                        //実行
+                        port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
+                        port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
+                        port.Write("A ");                         //コマンド実行
+                        Thread.Sleep(5000);                   //***停止時間(5sec)***
+                    }
+                    //初期化
+                    port.Write("PP00 ");
+                    port.Write("TP00 ");
+                    port.Write("A ");
+                    Thread.Sleep(1000);
                 }
 
                 //実行部へ
@@ -99,63 +196,22 @@ namespace Control_PTU
                     //delta: 測定の刻み幅[m]（!!測定範囲を割り切れるものにすること!!）                //
                     ////////////////////////////////////////////////////////////////////////////////////
 
-                    switch (exercute_num)   //sキーを押すたびに次の動作に移る
-                    {
-                        case 0:
-                            //Exercute(port, -0.25, 0.25, 0.5, 1.0, 0.1, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\pretest_0.csv");
-                            //Exercute(port, -1.0, 1.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge_0.csv");
-                            Exercute(port, 0.0, 2.0, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_00_20.csv");
-                            exercute_num++;
-                            break;
-                        case 1:
-                            //Exercute(port, -0.5, 0.0, 0.5, 1.0, 0.1, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\pretest_05.csv");
-                            //Exercute(port, 0.0, 2.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge_2.csv");
-                            Exercute(port, -0.2, 1.8, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-02_18.csv");
-                            exercute_num++;
-                            break;
-                        case 2:
-                            //Exercute(port, 0.0, 0.5, 0.5, 1.0, 0.1, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\pretest_-05.csv");
-                            //Exercute(port, -2.0, 0.0, 2.0, 4.0, 0.5, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\hoge_-2.csv");
-                            Exercute(port, -0.4, 1.6, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-04_16.csv");
-                            exercute_num++;
-                            break;
-                        case 3:
-                            Exercute(port, -0.6, 1.4, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-06_14.csv");
-                            exercute_num++;
-                            break;
-                        case 4:
-                            Exercute(port, -0.8, 1.2, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-08_12.csv");
-                            exercute_num++;
-                            break;
-                        case 5:
-                            Exercute(port, -1.0, 1.0, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-10_10.csv");
-                            exercute_num++;
-                            break;
-                        case 6:
-                            Exercute(port, -1.2, 0.8, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-12_08.csv");
-                            exercute_num++;
-                            break;
-                        case 7:
-                            Exercute(port, -1.4, 0.6, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-14_06.csv");
-                            exercute_num++;
-                            break;
-                        case 8:
-                            Exercute(port, -1.6, 0.4, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-16_04.csv");
-                            exercute_num++;
-                            break;
-                        case 9:
-                            Exercute(port, -1.8, 0.2, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-18_02.csv");
-                            exercute_num++;
-                            break;
-                        case 10:
-                            Exercute(port, -2.0, 0.0, 0.6, 2.6, 0.2, @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Ex1\MP_-20_00.csv");
-                            exercute_num++;
-                            break;
-                        default:
-                            Console.WriteLine("すべての計測が終わりました");
-                            break;
-                    }
+                    double _xmin_temp = 0;      //左端から計測を始めます
+                    double _xmax_temp = _xmax - _xmin;
 
+                    string file_Path = csv_path + "MP" + exercute_num.ToString() + ".csv";  //出力先ファイルパス，ファイル名
+                    double _xmin_temp2 = _xmin_temp - (exercute_num * _delta_PTU);      //計測点の左端をPTUを置く位置の刻み幅分だけずらしていく
+                    double _xmax_temp2 = _xmax_temp - (exercute_num * _delta_PTU);      //計測点の右端をPTUを置く位置の刻み幅分だけずらしていく
+                    if (_xmax_temp2 < 0)        //右は次まで来たら計測を終わります
+                    {
+                        Console.WriteLine("すべての計測が終わりました");
+                    }
+                    else
+                    {
+                        //関数の仕様：Exercute(port, xmin, xmax, ymin, ymax, delta, output_path)
+                        Exercute(port, _xmin_temp2, _xmax_temp2, _ymin, _ymax, _delta, file_Path);    //実行部へ
+                        exercute_num++;
+                    }
                 }
 
             }
@@ -256,33 +312,6 @@ namespace Control_PTU
                     mre.Reset();            //一回停止させる
                     mre.WaitOne();
                     //
-                    //時刻合わせ用タイムスタンプ
-                    port.Write("I ");               //Immediare mode
-                    port.Write("TP-200 ");        //***Tiltの動作角度入力***
-                    DateTime dt = DateTime.Now;
-                    string DT = dt.ToString("yyyy/MM/dd/HH:mm:ss.fff");      //string型に変換（ミリ秒まで取得）
-                    Console.WriteLine("■同期開始時刻: " + DT + "\n");       //タイムスタンプ 
-                    //CSV書き込み////////////////////////////////////////////////////////////////////////
-                    try
-                    {
-                        // appendをtrueにすると，既存のファイルに追記
-                        //         falseにすると，ファイルを新規作成する
-                        var append = true;
-                        // 出力用のファイルを開く
-                        using (var sw = new StreamWriter(output_path, append))
-                        {
-                            sw.WriteLine("{0}, {1}, {2},", DT, 10000, 10000);  //書き込み　時間，PAN, TILT
-                        }
-                    }
-                    catch (Exception err)
-                    {
-                        // ファイルを開くのに失敗したときエラーメッセージを表示
-                        Console.WriteLine(err.Message);
-                    }
-                    //////////////////////////////////////////////////////////////////////////////////////
-                    port.Write("S ");              //Slaved mode
-                    Thread.Sleep(3000);            //***停止時間(3sec)***
-                    //
 
                     for (Y_loop = YMIN; Y_loop <= YMAX; Y_loop = Y_loop + DELTA)      //y方向（縦方向）のループ
                     {
@@ -326,14 +355,14 @@ namespace Control_PTU
                             //Console.Write("\tPan:" + -deg_pan + "\tTilt:" + -deg_tilt);         //角度[degree]の表示
                             //Console.Write("\n");
                             //
-                            port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
-                            port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
+                            //port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
+                            //port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
                             port.Write("A ");                       //コマンド実行
                             mre.Reset();                            //一回停止させる
                             mre.WaitOne();
                             port.Write("MS ");                      //時間取得用フラグ（MS : Monitor status）
-                            //Thread.Sleep(20);                       //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
-                            Thread.Sleep(1000);                   //***停止時間(1sec)***
+                            Thread.Sleep(20);                       //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
+                            //Thread.Sleep(1000);                   //***停止時間(1sec)***
                             //
                             count++;                     //計測回数カウント
                         }////////////////////////////////////////////////////////////////////////////////////////////
@@ -381,14 +410,14 @@ namespace Control_PTU
                                 //Console.Write("\tPan:" + -deg_pan + "\tTilt:" + -deg_tilt);         //角度[degree]の表示
                                 //Console.Write("\n");
                                 //
-                                port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
-                                port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
+                                //port.Write("PP" + pos_pan + " ");       //***Panの動作角度入力***
+                                //port.Write("TP" + pos_tilt + " ");      //***Tiltの動作角度入力***
                                 port.Write("A ");                         //コマンド実行
                                 mre.Reset();                              //一回停止させる
                                 mre.WaitOne();
                                 port.Write("MS ");                        //移動完了フラグ（MS : Monitor status）
-                                //Thread.Sleep(20);                         //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
-                                Thread.Sleep(1000);                     //***停止時間(1sec)***
+                                Thread.Sleep(20);                         //***仮停止時間(0.01sec)***（タイムスタンプのシリアル通信遅延のため）
+                                //Thread.Sleep(1000);                     //***停止時間(1sec)***
                                 //
                                 count++;                     //計測回数カウント
                             }////////////////////////////////////////////////////////////////////////////////////////////
