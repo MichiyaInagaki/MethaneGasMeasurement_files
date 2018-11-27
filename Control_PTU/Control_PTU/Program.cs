@@ -16,7 +16,7 @@ namespace Control_PTU
     {
         //初期設定//////////////////////////////////////////////////////////////////////////////////
         //CSVファイルパス
-        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\map2test\";    //書き込み場所
+        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\temp\";    //書き込み場所
         private static string output_path;        //CSVファイル出力先のパス格納用
         //計測範囲の設定
         private static double _xmin = -1.0;
@@ -91,16 +91,16 @@ namespace Control_PTU
             //コマンド選択部************************************************************************************
             while (true)
             {
-                Console.WriteLine("sキー：実行 / qキー：中断 / dキー：接続終了 / fキー：フラグ時刻の取得 / cキー：キャリブレーション用");
+                Console.WriteLine("fキー：フラグ時刻の取得 / sキー：実行 / qキー：中断 / dキー：接続終了 / cキー：キャリブレーション用");
                 var key = Console.ReadKey(false);
-                //接続終了
+                //接続終了------------------------------------------------------
                 if (key.KeyChar == 'd')
                 {
                     Disconnect(port);
                     Environment.Exit(0);    //コンソールアプリケーションの終了
                 }
 
-                //フラグ時刻の取得
+                //フラグ時刻の取得----------------------------------------------
                 if (key.KeyChar == 'f')
                 {
                     //時刻合わせ用タイムスタンプ
@@ -130,7 +130,7 @@ namespace Control_PTU
                     port.Write("S ");              //Slaved mode
                 }
 
-                //キャリブレーション用
+                //キャリブレーション用----------------------------------------------
                 if (key.KeyChar == 'c')
                 {
                     //座標入力
@@ -139,8 +139,8 @@ namespace Control_PTU
                     Console.Write("Y座標: ");
                     double Yp = double.Parse(Console.ReadLine());
                     //高さ設定
-                    double Height = 0.273 + 0.01 + 0.091;            //PTUの高さ[m]=移動ロボットの高さ+固定盤の厚み+PTUの腕関節までの長さ
-                    double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
+                    double Height = 0.273 + 0.01 + 0.091 -0.02;            //PTUの高さ[m]=移動ロボットの高さ+固定盤の厚み+PTUの腕関節までの長さ
+                    double length_tilt = 0.038 + 0.01 + 0.02-0.01;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
                     double length_pan = 0.019;                       //レーザーの発射口とファイ回転軸中心からのずれ[m]
                     //初期化
                     port.Write("S ");           //Slaved mode
@@ -187,7 +187,7 @@ namespace Control_PTU
                     Thread.Sleep(1000);
                 }
 
-                //実行部へ
+                //実行部へ----------------------------------------------------------------
                 if (key.KeyChar == 's')
                 {
                     ////////////////////////Exercute関数の仕様//////////////////////////////////////////
@@ -231,7 +231,7 @@ namespace Control_PTU
         private static string PAN = "0";
         private static string TILT = "0";
 
-        //実行回数フラグ
+        //実行回数フラグ***
         private static int exercute_num = 0;
 
         //実行部************************************************************************************************
@@ -245,13 +245,13 @@ namespace Control_PTU
             int X_loop, Y_loop;                               //ループ用変数
             int XMIN, XMAX, YMIN, YMAX, DELTA;         //ループ用に[cm]に直す,int型にキャスト
             XMIN = (int)(xmin * 100);
-            XMAX = (int)(xmax * 100);
+            XMAX = (int)((xmax+0.001) * 100);          //+0.001はキャスト問題解消のため:int(0.8*100)=79になる
             YMIN = (int)(ymin * 100);
             YMAX = (int)(ymax * 100);
             DELTA = (int)(delta * 100);
             ///////ロボットプラットフォームの寸法設定[m]////////////////////////////
-            double Height = 0.273 + 0.01 +0.091;             //PTUの高さ[m]=移動ロボットの高さ+固定盤の厚み+PTUの腕関節までの長さ
-            double length_tilt = 0.038 + 0.01 + 0.02;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
+            double Height = 0.273 + 0.01 +0.091-0.02;             //PTUの高さ[m]=移動ロボットの高さ+固定盤の厚み+PTUの腕関節までの長さ
+            double length_tilt = 0.038 + 0.01 + 0.02-0.01;        //Tilt部分の腕の長さ+取り付け具の厚み+メタン計の中心まで[m]
             double length_pan = 0.019;                       //レーザーの発射口とファイ回転軸中心からのずれ[m]
             ///////最大角，最小角の設定[pos]////////////////////////////////////////
             int pos_pan_max, pos_pan_min, pos_tilt_max, pos_tilt_min;   
@@ -304,8 +304,8 @@ namespace Control_PTU
                     //初期化関係
                     Console.Write("setup... \n");  //初期化
                     port.Write("S ");              //Slaved mode
-                    port.Write("PS500 ");       //Pan速度設定
-                    port.Write("TS500 ");       //Tilt速度設定
+                    port.Write("PS1000 ");       //Pan速度設定
+                    port.Write("TS1000 ");       //Tilt速度設定
                     port.Write("PP00 ");        //Pan0
                     port.Write("TP00 ");        //Tilt0
                     port.Write("A ");
@@ -315,7 +315,7 @@ namespace Control_PTU
 
                     for (Y_loop = YMIN; Y_loop <= YMAX; Y_loop = Y_loop + DELTA)      //y方向（縦方向）のループ
                     {
-                        for (X_loop = XMIN; X_loop <= XMAX; X_loop = X_loop + DELTA)  //x方向（横方向）のループ[行きがけ：-から+]/////////////
+                        for (X_loop = XMIN; X_loop <= XMAX; X_loop += DELTA)  //x方向（横方向）のループ[行きがけ：-から+]/////////////
                         {
                             Xm = X_loop / 100.0;  //計算用にxy座標を[m]に直す
                             Ym = Y_loop / 100.0;
@@ -350,6 +350,7 @@ namespace Control_PTU
 
                             //動作部分
                             Console.Write("num:" + count);                                        //カウント数の表示
+                            Console.Write("   \tloop:" + "(" + X_loop + ", " + Y_loop + ", " + xmax + ", " + XMAX + ")");             //グリッド[x,y]の表示
                             Console.Write("   \tgrid:" + "(" + Xm + ", " + Ym + ")");             //グリッド[x,y]の表示
                             Console.Write("     \tPan:" + pos_pan + "   \tTilt:" + pos_tilt);     //角度[position]の表示
                             //Console.Write("\tPan:" + -deg_pan + "\tTilt:" + -deg_tilt);         //角度[degree]の表示
@@ -370,7 +371,7 @@ namespace Control_PTU
                         if (Y_loop + DELTA <= YMAX)  //帰りがけできるかの確認
                         {
                             Y_loop = Y_loop + DELTA;            //y方向に+計測幅
-                            for (X_loop = XMAX; X_loop >= XMIN; X_loop = X_loop - DELTA)  //x方向（横方向）のループ[帰りがけ：+から-]/////
+                            for (X_loop = XMAX; X_loop >= XMIN; X_loop -= DELTA)  //x方向（横方向）のループ[帰りがけ：+から-]/////
                             {
                                 Xm = X_loop / 100.0;  //計算用に[m]に直す
                                 Ym = Y_loop / 100.0;
@@ -405,6 +406,7 @@ namespace Control_PTU
 
                                 //動作部分
                                 Console.Write("num:" + count);                                        //カウント数の表示
+                                Console.Write("   \tloop:" + "(" + X_loop + ", " + Y_loop + ", " + xmax + ", " + XMAX + ")");             //グリッド[x,y]の表示
                                 Console.Write("   \tgrid:" + "(" + Xm + ", " + Ym + ")");             //グリッド[x,y]の表示
                                 Console.Write("     \tPan:" + pos_pan + "   \tTilt:" + pos_tilt);     //角度[position]の表示
                                 //Console.Write("\tPan:" + -deg_pan + "\tTilt:" + -deg_tilt);         //角度[degree]の表示
