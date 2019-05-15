@@ -16,7 +16,7 @@ namespace Control_PTU
     {
         //初期設定//////////////////////////////////////////////////////////////////////////////////
         //CSVファイルパス
-        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\temp\";    //書き込み場所
+        private static string csv_path = @"C:\Users\SENS\source\repos\Control_PTU\Control_PTU\csv\Demo\";    //書き込み場所
         private static string output_path;        //CSVファイル出力先のパス格納用
         //計測範囲の設定
         private static double _xmin = -1.0;
